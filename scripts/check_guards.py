@@ -79,7 +79,8 @@ def main():
           <button id="off" disabled>Disabled</button>
           <select id="category" aria-label="Category">
             <option>All</option><option>Design</option><option disabled>Unavailable</option>
-          </select></form><aside id="unrelated">News</aside>
+          </select>
+          <label>Check-in <input id="checkin" type="date"></label></form><aside id="unrelated">News</aside>
         """))
         page = browser.observe(screenshot=False)
         buy = next(a for a in page["actions"] if a["label"] == "Buy")
@@ -112,6 +113,15 @@ def main():
         browser.act(select, page)
         assert browser.evaluate("document.querySelector('#category').value") == "Design"
         passed.append("native dropdown selects an observed option")
+
+        browser.evaluate("document.querySelector('#checkin').addEventListener('change',()=>window.dateChanged=true)")
+        page = browser.observe(screenshot=False)
+        date = next(a for a in page["actions"] if a["label"] == "Check-in (YYYY-MM-DD)")
+        assert date["kind"] == "fill", date
+        browser.act(date, page, text="2026-09-20")
+        assert browser.evaluate("document.querySelector('#checkin').value") == "2026-09-20"
+        assert browser.evaluate("window.dateChanged") is True
+        passed.append("date input is labelled with its format and filled through the value setter")
 
         browser.evaluate("document.querySelector('#query').addEventListener('input',()=>setTimeout(()=>{"
                          "document.querySelector('#suggestions').innerHTML='<div role=option>Generated</div>'"

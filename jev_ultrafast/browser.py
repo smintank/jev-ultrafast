@@ -156,13 +156,20 @@ def browser_operation(request):
                 e.dispatchEvent(new Event('input',{bubbles:true}));
                 e.dispatchEvent(new Event('change',{bubbles:true}));
               }
+              // Date-like inputs ignore Input.insertText; the native setter keeps framework listeners in sync.
+              if (action.kind==='fill' && ['date','datetime-local','time','month','week'].includes(e.type)) {
+                Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,action.text);
+                e.dispatchEvent(new Event('input',{bubbles:true}));
+                e.dispatchEvent(new Event('change',{bubbles:true}));
+                return e.value===action.text ? {x,y,typed:true} : null;
+              }
               return {x,y};
-            })(""" + json.dumps(action) + ")")
+            })(""" + json.dumps({**action, "text": request.get("text")}) + ")")
             if target is None:
                 if kind == "select":
                     raise RuntimeError("Dropdown execution was not confirmed; inspect before retrying.")
                 raise StalePage("Target changed or is covered. Observe again.")
-            if kind != "select":
+            if kind != "select" and not target.get("typed"):
                 x, y = target["x"], target["y"]
                 for event in ("mousePressed", "mouseReleased"):
                     call("Input.dispatchMouseEvent", type=event, x=x, y=y, button="left", clickCount=1)
